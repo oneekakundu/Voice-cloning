@@ -1,4 +1,13 @@
+# Audio recording
 sounddevice
 soundfile
 numpy<2.0
+
+# Speech-to-Text
 faster-whisper
+
+# Speaker Recognition
+speechbrain>=1.0.0
+torch>=2.0.0
+torchaudio>=2.0.0
+torchcodec==0.15.0
