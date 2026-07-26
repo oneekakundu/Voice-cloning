@@ -45,7 +45,8 @@ def speech_to_text(audio_path: str | Path) -> Path:
         segments, _ = model.transcribe(
         str(audio_path),
         language="en",
-        beam_size=5
+        beam_size=5,
+        vad_filter=True,
         )
 
         transcript = " ".join(
