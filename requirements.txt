@@ -1,0 +1,4 @@
+sounddevice
+soundfile
+numpy<2.0
+faster-whisper
