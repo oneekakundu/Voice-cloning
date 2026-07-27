@@ -1,0 +1,1 @@
+For the actual enrollment pipeline test, I am recording 5 separate audio recordings from the same speaker.

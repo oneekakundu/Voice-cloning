@@ -1,0 +1,11 @@
+{
+    "user_id": "user_001",
+    "profile_name": "Oneeka",
+    "embedding_dimension": 192,
+    "reference_embedding_count": 5,
+    "maximum_reference_embeddings": 5,
+    "enrollment_complete": true,
+    "created_at": "2026-07-27T14:47:45.351049+00:00",
+    "updated_at": "2026-07-27T14:47:45.598530+00:00",
+    "status": "active"
+}
