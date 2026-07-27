@@ -4,10 +4,10 @@ from Voice_Recognition.speaker_preprocessing import SpeakerAudioPreprocessor
 def main():
 
     audio_path = (
-        "data/audio/recording_20260727_092147.wav",
-        "data/audio/recording_20260727_194049.wav",
-        "data/audio/recording_20260727_194120.wav",
-        "data/audio/recording_20260727_194145.wav",
+        "data/audio/recording_20260727_092147.wav"
+        "data/audio/recording_20260727_194049.wav"
+        "data/audio/recording_20260727_194120.wav"
+        "data/audio/recording_20260727_194145.wav"
         "data/audio/recording_20260727_194225.wav"
     )
 

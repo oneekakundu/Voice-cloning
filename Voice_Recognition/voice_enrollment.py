@@ -22,7 +22,7 @@ Supports:
 from pathlib import Path
 
 from Voice_Recognition.speaker_preprocessing import (
-    SpeakerPreprocessor
+    SpeakerAudioPreprocessor
 )
 
 from Voice_Recognition.speaker_encoder import (
@@ -114,17 +114,17 @@ class VoiceRecognitionPipeline:
         audio_path: str
     ):
         """
-        Convert audio file into a 192-D embedding.
+        Convert audio file into a speaker embedding.
 
-        Flow:
+        The SpeakerEncoder internally performs:
 
             Audio
-              ↓
-            Preprocessing
-              ↓
+                ↓
+            Speaker Preprocessing
+                ↓
             ECAPA-TDNN
-              ↓
-            Embedding
+                ↓
+            192-D Embedding
         """
 
         audio_path = Path(
@@ -137,10 +137,6 @@ class VoiceRecognitionPipeline:
                 f"Audio file not found: "
                 f"{audio_path}"
             )
-
-        # Your existing encoder should internally
-        # use the preprocessing pipeline if that
-        # is how your current implementation is designed.
 
         embedding = (
             self.encoder.encode(
@@ -161,28 +157,35 @@ class VoiceRecognitionPipeline:
         profile_name: str = "Primary User"
     ) -> dict:
         """
-        Process one audio recording for enrollment.
+        Incrementally enroll one audio recording.
 
-        Behavior:
+        Enrollment behavior:
 
-            First audio:
-                Save as reference_1
+            Recording 1:
+                Save immediately as reference_1
 
-            Second audio:
-                Compare with reference_1
-                If match → save reference_2
+            Recording 2:
+                Compare against reference_1
+                If matched → save reference_2
 
-            ...
+            Recording 3:
+                Compare against references 1 and 2
+                If matched → save reference_3
 
-            Fifth audio:
-                Verify and save reference_5
+            Recording 4:
+                Compare against references 1, 2, and 3
+                If matched → save reference_4
 
-            After five:
+            Recording 5:
+                Compare against references 1, 2, 3, and 4
+                If matched → save reference_5
+
+            After 5 references:
                 Enrollment complete
         """
 
         # -----------------------------------------
-        # GENERATE NEW EMBEDDING
+        # GENERATE EMBEDDING
         # -----------------------------------------
 
         new_embedding = (
@@ -315,7 +318,9 @@ class VoiceRecognitionPipeline:
         current_count = (
             self.profile_manager
             .get_reference_count(
+
                 user_id
+
             )
         )
 
@@ -337,8 +342,7 @@ class VoiceRecognitionPipeline:
 
             "enrollment_complete": (
 
-                current_count
-                >= 5
+                current_count >= 5
 
             ),
 
@@ -355,22 +359,34 @@ class VoiceRecognitionPipeline:
         audio_path: str
     ) -> dict:
         """
-        Identify the speaker from an audio file.
+        Identify the speaker from one audio recording.
 
         Flow:
 
-            Audio
-              ↓
-            Preprocessing
-              ↓
-            Encoder
-              ↓
+            Current Audio File
+                    ↓
+            Speaker Preprocessing
+                    ↓
+            ECAPA-TDNN Encoder
+                    ↓
             Temporary Embedding
-              ↓
-            Speaker Identifier
-              ↓
-            User / Unknown
+                    ↓
+            Compare Against All Stored Profiles
+                    ↓
+            Similarity Voting
+                    ↓
+            Known Speaker / Unknown Speaker
+
+        The temporary embedding is only held in memory
+        during this operation.
+
+        The original audio file remains available for
+        dataset storage by the outer Voice Input pipeline.
         """
+
+        # -----------------------------------------
+        # GENERATE TEMPORARY EMBEDDING
+        # -----------------------------------------
 
         new_embedding = (
             self.generate_embedding(
@@ -378,16 +394,18 @@ class VoiceRecognitionPipeline:
             )
         )
 
+        # -----------------------------------------
+        # IDENTIFY SPEAKER
+        # -----------------------------------------
+
         result = (
             self.identifier.identify(
                 new_embedding
             )
         )
 
-        # new_embedding is now no longer
-        # needed after identification.
-        #
-        # It remains only as a local variable
-        # during this method execution.
+        # -----------------------------------------
+        # RETURN COMPLETE RESULT
+        # -----------------------------------------
 
         return result

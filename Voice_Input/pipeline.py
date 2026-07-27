@@ -10,21 +10,27 @@ Pipeline:
         ↓
     Speaker Recognition
         ↓
+    Save Audio to Speaker Dataset
+        ↓
     Speech-to-Text
         ↓
     Transcription
 
-Current responsibilities:
+Responsibilities:
 
     1. Record audio
     2. Identify the speaker
-    3. Transcribe the audio
-    4. Return the generated file paths and speaker result
+    3. Display similarity diagnostics
+    4. Save original audio under the identified speaker
+    5. Transcribe the same audio
+    6. Return all results
 """
 
 from __future__ import annotations
 
 import sys
+import shutil
+
 from pathlib import Path
 from typing import Any
 
@@ -95,31 +101,338 @@ voice_recognition = (
 
 
 # =========================================================
+# DATASET STORAGE
+# =========================================================
+
+VOICE_PROFILE_DIRECTORY = (
+
+    PROJECT_ROOT
+    / "data"
+    / "voice_profiles"
+
+)
+
+
+def save_audio_to_speaker_profile(
+
+    audio_path: Path,
+
+    speaker_result: dict[str, Any]
+
+) -> Path | None:
+    """
+    Save the original recorded WAV file
+    inside the identified speaker's audio dataset.
+
+    Example:
+
+        data/voice_profiles/user_001/audio/
+            recording_20260727_220522.wav
+
+    The original audio file is copied.
+
+    It is NOT converted into an embedding
+    for dataset storage.
+
+    Returns:
+
+        Destination path if speaker identified.
+
+        None if speaker unknown.
+    """
+
+    # -----------------------------------------
+    # CHECK IDENTIFICATION RESULT
+    # -----------------------------------------
+
+    if not speaker_result.get(
+
+        "identified",
+
+        False
+
+    ):
+
+        return None
+
+
+    user_id = (
+
+        speaker_result.get(
+
+            "user_id"
+
+        )
+
+    )
+
+
+    if not user_id:
+
+        return None
+
+
+    # -----------------------------------------
+    # CREATE SPEAKER AUDIO DIRECTORY
+    # -----------------------------------------
+
+    speaker_audio_directory = (
+
+        VOICE_PROFILE_DIRECTORY
+        / user_id
+        / "audio"
+
+    )
+
+
+    speaker_audio_directory.mkdir(
+
+        parents=True,
+
+        exist_ok=True
+
+    )
+
+
+    # -----------------------------------------
+    # DESTINATION PATH
+    # -----------------------------------------
+
+    destination_path = (
+
+        speaker_audio_directory
+        / audio_path.name
+
+    )
+
+
+    # -----------------------------------------
+    # COPY ORIGINAL AUDIO
+    # -----------------------------------------
+
+    shutil.copy2(
+
+        audio_path,
+
+        destination_path
+
+    )
+
+
+    return destination_path
+
+
+# =========================================================
+# DISPLAY SPEAKER SIMILARITY REPORT
+# =========================================================
+
+def display_similarity_report(
+
+    speaker_result: dict[str, Any]
+
+) -> None:
+    """
+    Display the complete speaker identification
+    and similarity diagnostics.
+
+    This function does not change
+    identification logic.
+
+    It only displays the information
+    already returned by SpeakerIdentifier.
+    """
+
+    print(
+
+        "\n"
+        "========================================"
+
+    )
+
+    print(
+
+        "VOICE IDENTIFICATION REPORT"
+
+    )
+
+    print(
+
+        "========================================"
+
+    )
+
+
+    print(
+
+        f"\nIdentified: "
+        f"{speaker_result.get('identified', False)}"
+
+    )
+
+
+    if speaker_result.get(
+
+        "user_id"
+
+    ):
+
+        print(
+
+            f"User ID: "
+            f"{speaker_result['user_id']}"
+
+        )
+
+
+    # -----------------------------------------
+    # PROFILE RESULTS
+    # -----------------------------------------
+
+    profile_results = (
+
+        speaker_result.get(
+
+            "profile_results",
+
+            []
+
+        )
+
+    )
+
+
+    if not profile_results:
+
+        print(
+
+            "\nNo profile comparison results "
+            "were returned."
+
+        )
+
+        return
+
+
+    print(
+
+        "\nProfile Comparison Results:"
+
+    )
+
+
+    for profile_result in profile_results:
+
+        print(
+
+            "\n----------------------------------------"
+
+        )
+
+
+        print(
+
+            f"User ID: "
+            f"{profile_result.get('user_id')}"
+
+        )
+
+
+        print(
+
+            f"Is Match: "
+            f"{profile_result.get('is_match')}"
+
+        )
+
+
+        print(
+
+            f"Match Count: "
+            f"{profile_result.get('match_count')}"
+
+        )
+
+
+        print(
+
+            f"Required Matches: "
+            f"{profile_result.get('required_matches')}"
+
+        )
+
+
+        print(
+
+            f"Average Similarity: "
+            f"{profile_result.get('average_similarity', 0.0):.4f}"
+
+        )
+
+
+        print(
+
+            f"Maximum Similarity: "
+            f"{profile_result.get('maximum_similarity', 0.0):.4f}"
+
+        )
+
+
+        similarities = (
+
+            profile_result.get(
+
+                "similarities",
+
+                []
+
+            )
+
+        )
+
+
+        print(
+
+            f"Per-Reference Similarities: "
+            f"{similarities}"
+
+        )
+
+
+# =========================================================
 # MAIN VOICE INPUT PIPELINE
 # =========================================================
 
 def run_pipeline() -> tuple[
+
     Path,
+
     Path,
+
     dict[str, Any]
+
 ]:
     """
-    Record audio, identify the speaker,
-    transcribe the audio, and return results.
+    Execute the complete voice input pipeline.
 
     Complete flow:
 
         Microphone
             ↓
-        Audio File
+        Record Audio
             ↓
-        Speaker Recognition
+        Current WAV File
             ↓
-        Speaker Result
+        Generate Temporary Embedding
+            ↓
+        Compare With Stored References
+            ↓
+        Identify Speaker
+            ↓
+        Save Original WAV to Speaker Dataset
             ↓
         Speech-to-Text
             ↓
-        Transcription
+        Final Result
     """
 
     # =====================================================
@@ -127,17 +440,24 @@ def run_pipeline() -> tuple[
     # =====================================================
 
     print(
+
         "\n"
         "========================================"
+
     )
 
     print(
+
         "STEP 1: RECORDING AUDIO"
+
     )
 
     print(
+
         "========================================"
+
     )
+
 
     audio_path = (
 
@@ -145,12 +465,17 @@ def run_pipeline() -> tuple[
 
     )
 
+
     print(
-        f"\nAudio recorded:"
+
+        "\nAudio recorded:"
+
     )
 
     print(
+
         audio_path
+
     )
 
 
@@ -159,17 +484,24 @@ def run_pipeline() -> tuple[
     # =====================================================
 
     print(
+
         "\n"
         "========================================"
+
     )
 
     print(
+
         "STEP 2: IDENTIFYING SPEAKER"
+
     )
 
     print(
+
         "========================================"
+
     )
+
 
     speaker_result = (
 
@@ -183,46 +515,106 @@ def run_pipeline() -> tuple[
     )
 
 
-    if speaker_result.get(
+    # -----------------------------------------
+    # DISPLAY COMPLETE SIMILARITY INFORMATION
+    # -----------------------------------------
 
-        "identified",
+    display_similarity_report(
 
-        False
+        speaker_result
 
-    ):
+    )
+
+
+    # =====================================================
+    # STEP 3: SAVE ORIGINAL AUDIO
+    # =====================================================
+
+    print(
+
+        "\n"
+        "========================================"
+
+    )
+
+    print(
+
+        "STEP 3: SAVING SPEAKER AUDIO"
+
+    )
+
+    print(
+
+        "========================================"
+
+    )
+
+
+    speaker_audio_path = (
+
+        save_audio_to_speaker_profile(
+
+            audio_path=audio_path,
+
+            speaker_result=speaker_result
+
+        )
+
+    )
+
+
+    if speaker_audio_path:
 
         print(
-            "\n✓ Known speaker identified"
+
+            "\n✓ Audio saved to speaker dataset:"
+
         )
 
         print(
-            f"User ID: "
-            f"{speaker_result['user_id']}"
+
+            speaker_audio_path
+
         )
 
     else:
 
         print(
-            "\n⚠ Speaker unknown"
+
+            "\n⚠ Speaker unknown."
+
+        )
+
+        print(
+
+            "Audio remains in the general audio directory."
+
         )
 
 
     # =====================================================
-    # STEP 3: SPEECH-TO-TEXT
+    # STEP 4: SPEECH-TO-TEXT
     # =====================================================
 
     print(
+
         "\n"
         "========================================"
+
     )
 
     print(
-        "STEP 3: SPEECH-TO-TEXT"
+
+        "STEP 4: SPEECH-TO-TEXT"
+
     )
 
     print(
+
         "========================================"
+
     )
+
 
     text_path = (
 
@@ -234,10 +626,6 @@ def run_pipeline() -> tuple[
 
     )
 
-
-    # =====================================================
-    # STEP 4: READ TRANSCRIPTION
-    # =====================================================
 
     transcription = (
 
@@ -251,22 +639,36 @@ def run_pipeline() -> tuple[
     )
 
 
+    # =====================================================
+    # FINAL RESULT
+    # =====================================================
+
     print(
+
         "\n"
         "========================================"
+
     )
 
     print(
+
         "FINAL RESULT"
+
     )
 
     print(
+
         "========================================"
+
     )
 
+
     print(
+
         "\nSpeaker:"
+
     )
+
 
     if speaker_result.get(
 
@@ -278,43 +680,76 @@ def run_pipeline() -> tuple[
 
         print(
 
-            speaker_result[
+            speaker_result.get(
 
-                "user_id"
+                "user_id",
 
-            ]
+                "UNKNOWN"
+
+            )
 
         )
 
     else:
 
         print(
+
             "UNKNOWN"
+
         )
 
 
     print(
+
         "\nTranscription:"
+
     )
 
     print(
+
         transcription
+
+    )
+
+
+    print(
+
+        "\nOriginal audio saved at:"
+
     )
 
     print(
-        f"\nAudio saved at:"
-    )
 
-    print(
         audio_path
+
+    )
+
+
+    if speaker_audio_path:
+
+        print(
+
+            "\nSpeaker dataset audio saved at:"
+
+        )
+
+        print(
+
+            speaker_audio_path
+
+        )
+
+
+    print(
+
+        "\nText saved at:"
+
     )
 
     print(
-        f"\nText saved at:"
-    )
 
-    print(
         text_path
+
     )
 
 

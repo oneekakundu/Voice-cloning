@@ -59,29 +59,11 @@ TEST_PROFILE_NAME = (
 #
 # Replace these filenames with your actual files.
 
-AUDIO_FILES = [
-
-    Path(
-        "data/audio/recording_20260727_092147.wav"
-    ),
-
-    Path(
-        "data/audio/recording_20260727_092200.wav"
-    ),
-
-    Path(
-        "data/audio/recording_20260727_092215.wav"
-    ),
-
-    Path(
-        "data/audio/recording_20260727_092230.wav"
-    ),
-
-    Path(
-        "data/audio/recording_20260727_092245.wav"
+AUDIO_FILES = sorted(
+    list(
+        Path("data/audio").glob("recording_*.wav")
     )
-
-]
+)[:5]
 
 
 # This threshold is only a starting point.
