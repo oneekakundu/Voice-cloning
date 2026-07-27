@@ -4,7 +4,7 @@ from Voice_Recognition.speaker_encoder import SpeakerEncoder
 
 
 AUDIO_FILE = Path(
-    "data/audio/recording_20260726_113133.wav"
+    "data/audio/recording_20260727_092147.wav"
 )
 
 

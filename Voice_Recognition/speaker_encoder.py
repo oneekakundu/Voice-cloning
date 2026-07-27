@@ -2,7 +2,7 @@
 ECAPA-TDNN Speaker Encoder
 
 Responsibilities:
-    Audio file → Speaker embedding
+    Audio file → Preprocessed audio → Speaker embedding
 
 This module does NOT:
     - Record audio
@@ -10,18 +10,16 @@ This module does NOT:
     - Identify speakers
     - Compare embeddings
     - Manage voice profiles
-
-Those responsibilities belong to other modules.
 """
 
 from pathlib import Path
 from typing import Union
 
 import torch
-import soundfile as sf
 from speechbrain.inference.speaker import EncoderClassifier
 
 from .config import SPEAKER_MODEL_SOURCE, DEVICE
+from .speaker_preprocessing import SpeakerAudioPreprocessor
 
 
 class SpeakerEncoder:
@@ -55,7 +53,12 @@ class SpeakerEncoder:
             run_opts={"device": self.device},
         )
 
-        print("ECAPA-TDNN speaker encoder loaded successfully.")
+        self.preprocessor = SpeakerAudioPreprocessor()
+
+        print(
+            "ECAPA-TDNN speaker encoder "
+            "loaded successfully."
+        )
 
     def encode(
         self,
@@ -63,6 +66,15 @@ class SpeakerEncoder:
     ) -> torch.Tensor:
         """
         Convert an audio file into a speaker embedding.
+
+        Pipeline:
+            Audio file
+                ↓
+            Audio preprocessing
+                ↓
+            ECAPA-TDNN
+                ↓
+            Speaker embedding
 
         Args:
             audio_path: Path to a WAV/audio file.
@@ -79,26 +91,32 @@ class SpeakerEncoder:
                 f"Audio file not found: {audio_path}"
             )
 
-        # Load audio
-        audio_data, sample_rate = sf.read(str(audio_path))
+        # Preprocess audio:
+        # - Convert to mono
+        # - Resample to 16 kHz
+        # - Convert to float32
+        # - Trim silence
+        # - Normalize amplitude
+        signal = self.preprocessor.process(
+            audio_path,
+            trim_silence=True,
+            normalize=False,
+        )
 
-        print(f"Audio sample rate: {sample_rate} Hz")
-
-        # Convert NumPy array to PyTorch tensor
-        signal = torch.from_numpy(audio_data).float()
-
-        # Convert stereo audio to mono
-        if signal.ndim == 2:
-            signal = signal.mean(dim=1)
-
-        # Move audio to selected device
+        # Move processed audio to selected device
         signal = signal.to(self.device)
 
         # Generate speaker embedding
         with torch.no_grad():
-            embedding = self.model.encode_batch(signal)
+            embedding = self.model.encode_batch(
+                signal
+            )
 
-        # Convert [1, 1, embedding_dim] → [embedding_dim]
+        # Convert:
+        # [1, 1, embedding_dim]
+        #
+        # to:
+        # [embedding_dim]
         embedding = embedding.squeeze()
 
         return embedding
@@ -129,6 +147,8 @@ class SpeakerEncoder:
         Return the dimensionality of the generated embedding.
         """
 
-        embedding = self.encode_and_normalize(audio_path)
+        embedding = self.encode_and_normalize(
+            audio_path
+        )
 
         return embedding.shape[0]
