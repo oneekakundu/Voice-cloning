@@ -60,7 +60,7 @@ class VoiceRecognitionPipeline:
         # -----------------------------------------
 
         self.preprocessor = (
-            SpeakerPreprocessor()
+            SpeakerAudioPreprocessor()
         )
 
         # -----------------------------------------

@@ -173,53 +173,22 @@ def save_audio_to_speaker_profile(
 
 
     # -----------------------------------------
-    # CREATE SPEAKER AUDIO DIRECTORY
+    # SAVE AUDIO TO SPEAKER PROFILE
     # -----------------------------------------
 
-    speaker_audio_directory = (
+    return (
 
-        VOICE_PROFILE_DIRECTORY
-        / user_id
-        / "audio"
+        voice_recognition
+        .profile_manager
+        .save_audio_recording(
+
+            user_id=user_id,
+
+            audio_path=audio_path
+
+        )
 
     )
-
-
-    speaker_audio_directory.mkdir(
-
-        parents=True,
-
-        exist_ok=True
-
-    )
-
-
-    # -----------------------------------------
-    # DESTINATION PATH
-    # -----------------------------------------
-
-    destination_path = (
-
-        speaker_audio_directory
-        / audio_path.name
-
-    )
-
-
-    # -----------------------------------------
-    # COPY ORIGINAL AUDIO
-    # -----------------------------------------
-
-    shutil.copy2(
-
-        audio_path,
-
-        destination_path
-
-    )
-
-
-    return destination_path
 
 
 # =========================================================
@@ -563,6 +532,35 @@ def run_pipeline() -> tuple[
     )
 
 
+    incremental_enrollment = False
+
+    if speaker_result.get("identified", False):
+
+        user_id = speaker_result.get("user_id")
+
+        if user_id and not voice_recognition.profile_manager.is_enrollment_complete(user_id):
+
+            enrollment_res = voice_recognition.enroll(
+
+                audio_path=str(audio_path),
+
+                user_id=user_id
+
+            )
+
+            incremental_enrollment = enrollment_res.get("success", False)
+
+            if incremental_enrollment:
+
+                print(
+
+                    f"✓ Incremental voice enrollment updated for {user_id} "
+
+                    f"(references: {enrollment_res.get('reference_count')}/5)"
+
+                )
+
+
     if speaker_audio_path:
 
         print(
@@ -753,13 +751,36 @@ def run_pipeline() -> tuple[
     )
 
 
+    pipeline_result = {
+
+        "status": "identified" if speaker_result.get("identified") else "unknown",
+
+        "user_id": speaker_result.get("user_id"),
+
+        "confidence": speaker_result.get("confidence", 0.0),
+
+        "source_audio": str(audio_path),
+
+        "profile_audio": str(speaker_audio_path) if speaker_audio_path else None,
+
+        "text_path": str(text_path),
+
+        "transcription": transcription,
+
+        "incremental_enrollment": incremental_enrollment,
+
+        "speaker_result": speaker_result
+
+    }
+
+
     return (
 
         audio_path,
 
         text_path,
 
-        speaker_result
+        pipeline_result
 
     )
 

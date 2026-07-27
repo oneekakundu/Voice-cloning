@@ -84,6 +84,16 @@ class VoiceProfileManager:
             / "profile.json"
         )
 
+    def _get_audio_directory(
+        self,
+        user_id: str
+    ) -> Path:
+
+        return (
+            self._get_profile_directory(user_id)
+            / "audio"
+        )
+
     def _get_embedding_path(
         self,
         user_id: str,
@@ -471,6 +481,73 @@ class VoiceProfileManager:
             )
 
         return next_reference_number
+
+    # =========================================================
+    # SAVE AUDIO RECORDING TO PROFILE
+    # =========================================================
+
+    def save_audio_recording(
+        self,
+        user_id: str,
+        audio_path: str | Path
+    ) -> Path:
+        """
+        Copy the original recorded WAV file into the user's profile audio directory.
+
+        Example destination:
+            data/voice_profiles/user_001/audio/recording_20260727_092147.wav
+        """
+
+        self._validate_user_id(
+            user_id
+        )
+
+        source_path = Path(
+            audio_path
+        )
+
+        if not source_path.exists():
+
+            raise FileNotFoundError(
+                f"Source audio file not found: {source_path}"
+            )
+
+        audio_dir = (
+            self._get_audio_directory(
+                user_id
+            )
+        )
+
+        audio_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        destination_path = (
+            audio_dir
+            / source_path.name
+        )
+
+        import shutil
+
+        if source_path.resolve() != destination_path.resolve():
+
+            shutil.copy2(
+                source_path,
+                destination_path
+            )
+
+        if not destination_path.exists():
+
+            raise RuntimeError(
+                f"Failed to copy audio recording to: {destination_path}"
+            )
+
+        print(
+            f"✓ Original audio recording saved to profile: {destination_path}"
+        )
+
+        return destination_path
 
     # =========================================================
     # LOAD METADATA
