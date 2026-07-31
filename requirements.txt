@@ -1,7 +1,7 @@
 # Audio recording
 sounddevice
 soundfile
-numpy<2.0
+numpy
 
 # Speech-to-Text
 faster-whisper

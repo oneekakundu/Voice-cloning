@@ -1,6 +1,6 @@
 {
     "user_id": "user_001",
-    "profile_name": "user_001",
+    "profile_name": "Oneeka",
     "embedding_dimension": 192,
     "reference_embedding_count": 5,
     "maximum_reference_embeddings": 5,
