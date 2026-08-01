@@ -324,6 +324,31 @@ class VoiceProfileManager:
         return True
 
     # =========================================================
+    # GENERATE NEXT USER ID
+    # =========================================================
+
+    def generate_next_user_id(self) -> str:
+        """
+        Generate the next available user ID (e.g., user_001, user_002, user_003).
+
+        Determines the next available ID by inspecting existing profile directories
+        to prevent overwriting existing users.
+        """
+        existing_ids = set()
+        if self.profiles_directory.exists():
+            for path in self.profiles_directory.iterdir():
+                if path.is_dir():
+                    existing_ids.add(path.name)
+
+        number = 1
+        while True:
+            user_id = f"user_{number:03d}"
+            if user_id not in existing_ids:
+                return user_id
+            number += 1
+
+
+    # =========================================================
     # GET NUMBER OF REFERENCES
     # =========================================================
 

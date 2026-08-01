@@ -141,21 +141,6 @@ def save_audio_to_speaker_profile(
         None if speaker unknown.
     """
 
-    # -----------------------------------------
-    # CHECK IDENTIFICATION RESULT
-    # -----------------------------------------
-
-    if not speaker_result.get(
-
-        "identified",
-
-        False
-
-    ):
-
-        return None
-
-
     user_id = (
 
         speaker_result.get(
@@ -170,6 +155,7 @@ def save_audio_to_speaker_profile(
     if not user_id:
 
         return None
+
 
 
     # -----------------------------------------
@@ -243,7 +229,7 @@ def display_similarity_report(
 
         "user_id"
 
-    ):
+    ) and not speaker_result.get("newly_enrolled", False):
 
         print(
 
@@ -251,6 +237,7 @@ def display_similarity_report(
             f"{speaker_result['user_id']}"
 
         )
+
 
 
     # -----------------------------------------
@@ -532,33 +519,63 @@ def run_pipeline() -> tuple[
     )
 
 
-    incremental_enrollment = False
+    incremental_enrollment = speaker_result.get("embedding_added", False)
 
-    if speaker_result.get("identified", False):
+    if speaker_result.get("newly_enrolled", False):
 
         user_id = speaker_result.get("user_id")
 
-        if user_id and not voice_recognition.profile_manager.is_enrollment_complete(user_id):
+        ref_count = speaker_result.get("reference_count", 1)
 
-            enrollment_res = voice_recognition.enroll(
+        print(
 
-                audio_path=str(audio_path),
+            "\nNo existing speaker matched."
 
-                user_id=user_id
+        )
 
-            )
+        print(
 
-            incremental_enrollment = enrollment_res.get("success", False)
+            "Creating a new speaker profile..."
 
-            if incremental_enrollment:
+        )
 
-                print(
+        print(
 
-                    f"✓ Incremental voice enrollment updated for {user_id} "
+            "\nNew speaker enrolled successfully."
 
-                    f"(references: {enrollment_res.get('reference_count')}/5)"
+        )
 
-                )
+        print(
+
+            f"\nUser ID: {user_id}"
+
+        )
+
+        print(
+
+            f"Stored reference embeddings: {ref_count}"
+
+        )
+
+        print(
+
+            f"\nCurrent audio assigned to:\n{user_id}"
+
+        )
+
+    elif speaker_result.get("embedding_added", False):
+
+        user_id = speaker_result.get("user_id")
+
+        ref_count = speaker_result.get("reference_count")
+
+        print(
+
+            f"\n✓ Incremental voice enrollment updated for {user_id} "
+
+            f"(references: {ref_count}/5)"
+
+        )
 
 
     if speaker_audio_path:
@@ -668,33 +685,25 @@ def run_pipeline() -> tuple[
     )
 
 
-    if speaker_result.get(
+    user_id = speaker_result.get("user_id")
 
-        "identified",
+    if user_id:
 
-        False
-
-    ):
-
-        print(
-
-            speaker_result.get(
-
-                "user_id",
-
-                "UNKNOWN"
-
-            )
-
-        )
+        print(user_id)
 
     else:
 
+        print("UNKNOWN")
+
+
+    if speaker_result.get("newly_enrolled", False):
+
         print(
 
-            "UNKNOWN"
+            "\nSpeaker Status:\nNEWLY ENROLLED"
 
         )
+
 
 
     print(
@@ -753,7 +762,8 @@ def run_pipeline() -> tuple[
 
     pipeline_result = {
 
-        "status": "identified" if speaker_result.get("identified") else "unknown",
+        "status": "newly_enrolled" if speaker_result.get("newly_enrolled") else ("identified" if speaker_result.get("identified") else "unknown"),
+
 
         "user_id": speaker_result.get("user_id"),
 

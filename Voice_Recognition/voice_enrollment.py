@@ -19,7 +19,11 @@ Supports:
     2. Speaker identification
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+import torch
+
 
 from Voice_Recognition.speaker_preprocessing import (
     SpeakerAudioPreprocessor
@@ -356,43 +360,36 @@ class VoiceRecognitionPipeline:
 
     def identify(
         self,
-        audio_path: str
+        audio_path_or_embedding: str | Path | torch.Tensor,
+        auto_enroll: bool = True
     ) -> dict:
         """
-        Identify the speaker from one audio recording.
+        Identify the speaker from one audio recording or pre-generated embedding.
 
         Flow:
-
-            Current Audio File
-                    ↓
-            Speaker Preprocessing
-                    ↓
-            ECAPA-TDNN Encoder
-                    ↓
-            Temporary Embedding
-                    ↓
-            Compare Against All Stored Profiles
-                    ↓
-            Similarity Voting
-                    ↓
-            Known Speaker / Unknown Speaker
-
-        The temporary embedding is only held in memory
-        during this operation.
-
-        The original audio file remains available for
-        dataset storage by the outer Voice Input pipeline.
+            1. Obtain embedding from audio or tensor
+            2. Compare against all stored profiles
+            3. If identified:
+               - Incrementally save reference embedding if stored < 5
+            4. If not identified and auto_enroll is True:
+               - Automatically create next available user profile
+               - Save current embedding as reference #1
+               - Return updated profile info
         """
+        import torch
 
         # -----------------------------------------
-        # GENERATE TEMPORARY EMBEDDING
+        # GENERATE EMBEDDING IF AUDIO PATH
         # -----------------------------------------
 
-        new_embedding = (
-            self.generate_embedding(
-                audio_path
+        if isinstance(audio_path_or_embedding, torch.Tensor):
+            new_embedding = audio_path_or_embedding
+        else:
+            new_embedding = (
+                self.generate_embedding(
+                    str(audio_path_or_embedding)
+                )
             )
-        )
 
         # -----------------------------------------
         # IDENTIFY SPEAKER
@@ -405,7 +402,39 @@ class VoiceRecognitionPipeline:
         )
 
         # -----------------------------------------
-        # RETURN COMPLETE RESULT
+        # HANDLE INCREMENTAL ENROLLMENT OR NEW USER
         # -----------------------------------------
 
-        return result
+        if result.get("identified", False):
+            user_id = result.get("user_id")
+            result["is_new_user"] = False
+            result["newly_enrolled"] = False
+            if user_id:
+                ref_count = self.profile_manager.get_reference_count(user_id)
+                if ref_count < self.profile_manager.MAX_REFERENCE_EMBEDDINGS:
+                    self.profile_manager.add_reference_embedding(
+                        user_id=user_id,
+                        embedding=new_embedding
+                    )
+                    result["embedding_added"] = True
+                    result["reference_count"] = self.profile_manager.get_reference_count(user_id)
+                else:
+                    result["embedding_added"] = False
+        elif auto_enroll:
+            new_user_id = self.profile_manager.generate_next_user_id()
+            self.profile_manager.create_profile(
+                user_id=new_user_id,
+                profile_name=new_user_id
+            )
+            self.profile_manager.add_reference_embedding(
+                user_id=new_user_id,
+                embedding=new_embedding
+            )
+            result["user_id"] = new_user_id
+            result["profile_name"] = new_user_id
+            result["is_new_user"] = True
+            result["newly_enrolled"] = True
+            result["embedding_added"] = True
+            result["reference_count"] = 1
+
+        return result
