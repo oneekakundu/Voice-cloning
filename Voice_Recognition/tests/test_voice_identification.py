@@ -50,7 +50,7 @@ TEST_USER_ID = (
 )
 
 TEST_AUDIO_FILE = Path(
-    "data/audio/recording_20260727_092300.wav"
+    "data/audio/recording_20260727_092147.wav"
 )
 
 SIMILARITY_THRESHOLD = 0.70
@@ -341,7 +341,7 @@ def main():
 
     print(
         "\n"
-        "✓ Speaker identified successfully"
+        "Speaker identified successfully"
     )
 
     print(

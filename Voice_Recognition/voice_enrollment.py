@@ -189,11 +189,11 @@ class VoiceRecognitionPipeline:
         """
 
         # -----------------------------------------
-        # GENERATE EMBEDDING
+        # GENERATE EMBEDDING AND DURATION
         # -----------------------------------------
 
-        new_embedding = (
-            self.generate_embedding(
+        new_embedding, duration = (
+            self.encoder.encode_with_duration(
                 audio_path
             )
         )
@@ -220,7 +220,11 @@ class VoiceRecognitionPipeline:
 
                     user_id=user_id,
 
-                    embedding=new_embedding
+                    embedding=new_embedding,
+
+                    usable_speech_duration=duration,
+
+                    audio_path=audio_path
 
                 )
             )
@@ -237,30 +241,9 @@ class VoiceRecognitionPipeline:
                     reference_number
                 ),
 
+                "usable_speech_duration": duration,
+
                 "enrollment_complete": False
-
-            }
-
-        # -----------------------------------------
-        # CHECK IF PROFILE IS FULL
-        # -----------------------------------------
-
-        if self.profile_manager.is_enrollment_complete(
-            user_id
-        ):
-
-            return {
-
-                "success": False,
-
-                "status": "enrollment_already_complete",
-
-                "user_id": user_id,
-
-                "message": (
-                    "Profile already contains "
-                    "5 reference embeddings."
-                )
 
             }
 
@@ -305,7 +288,7 @@ class VoiceRecognitionPipeline:
             }
 
         # -----------------------------------------
-        # ACCEPT NEW REFERENCE
+        # ACCEPT NEW REFERENCE RECORDING
         # -----------------------------------------
 
         reference_number = (
@@ -314,7 +297,11 @@ class VoiceRecognitionPipeline:
 
                 user_id=user_id,
 
-                embedding=new_embedding
+                embedding=new_embedding,
+
+                usable_speech_duration=duration,
+
+                audio_path=audio_path
 
             )
         )
@@ -343,6 +330,12 @@ class VoiceRecognitionPipeline:
             "reference_count": (
                 current_count
             ),
+
+            "total_enrollment_records": (
+                self.profile_manager.get_total_enrollment_count(user_id)
+            ),
+
+            "usable_speech_duration": duration,
 
             "enrollment_complete": (
 
@@ -382,12 +375,16 @@ class VoiceRecognitionPipeline:
         # GENERATE EMBEDDING IF AUDIO PATH
         # -----------------------------------------
 
+        duration = None
+        audio_path = None
+
         if isinstance(audio_path_or_embedding, torch.Tensor):
             new_embedding = audio_path_or_embedding
         else:
-            new_embedding = (
-                self.generate_embedding(
-                    str(audio_path_or_embedding)
+            audio_path = str(audio_path_or_embedding)
+            new_embedding, duration = (
+                self.encoder.encode_with_duration(
+                    audio_path
                 )
             )
 
@@ -414,7 +411,9 @@ class VoiceRecognitionPipeline:
                 if ref_count < self.profile_manager.MAX_REFERENCE_EMBEDDINGS:
                     self.profile_manager.add_reference_embedding(
                         user_id=user_id,
-                        embedding=new_embedding
+                        embedding=new_embedding,
+                        usable_speech_duration=duration,
+                        audio_path=audio_path
                     )
                     result["embedding_added"] = True
                     result["reference_count"] = self.profile_manager.get_reference_count(user_id)
@@ -428,7 +427,9 @@ class VoiceRecognitionPipeline:
             )
             self.profile_manager.add_reference_embedding(
                 user_id=new_user_id,
-                embedding=new_embedding
+                embedding=new_embedding,
+                usable_speech_duration=duration,
+                audio_path=audio_path
             )
             result["user_id"] = new_user_id
             result["profile_name"] = new_user_id

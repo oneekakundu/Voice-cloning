@@ -125,17 +125,17 @@ def test_list_profiles(manager):
     assert profiles[0]["user_id"] == TEST_USER_ID
     print(f"OK: Profile list contains {len(profiles)} profile(s)")
 
-def test_sixth_embedding_rejected(manager):
+def test_sixth_embedding_accepted(manager):
     print("\n========================================")
-    print("TEST: SIXTH EMBEDDING REJECTED")
+    print("TEST: SIXTH EMBEDDING ACCEPTED")
     print("========================================")
     
     extra_embedding = torch.randn(EMBEDDING_DIMENSION)
-    try:
-        manager.add_reference_embedding(user_id=TEST_USER_ID, embedding=extra_embedding)
-        assert False, "Should have raised RuntimeError"
-    except RuntimeError:
-        print("OK: Successfully rejected 6th embedding")
+    ref_num = manager.add_reference_embedding(user_id=TEST_USER_ID, embedding=extra_embedding)
+    assert ref_num == 6
+    assert manager.get_total_enrollment_count(TEST_USER_ID) == 6
+    assert manager.get_reference_count(TEST_USER_ID) == 5
+    print("OK: Successfully accepted 6th embedding into enrollment history")
 
 def test_delete_profile(manager):
     print("\n========================================")
@@ -163,7 +163,7 @@ def main():
     test_metadata(manager)
     test_single_embedding_loading(manager)
     test_list_profiles(manager)
-    test_sixth_embedding_rejected(manager)
+    test_sixth_embedding_accepted(manager)
     test_delete_profile(manager)
     
     print("\n" + "="*50)

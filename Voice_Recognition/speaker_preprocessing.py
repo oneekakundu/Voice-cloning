@@ -382,3 +382,14 @@ class SpeakerAudioPreprocessor:
         )
 
         return waveform
+
+    def get_usable_speech_duration(
+        self,
+        audio_path: Union[str, Path],
+    ) -> float:
+        """
+        Calculate usable speech duration in seconds for an audio file
+        after preprocessing and validation.
+        """
+        waveform = self.process(audio_path)
+        return float(waveform.shape[1] / self.TARGET_SAMPLE_RATE)

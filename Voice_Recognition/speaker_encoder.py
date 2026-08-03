@@ -13,7 +13,7 @@ This module does NOT:
 """
 
 from pathlib import Path
-from typing import Union
+from typing import Union, Tuple
 
 import torch
 from speechbrain.inference.speaker import EncoderClassifier
@@ -60,6 +60,41 @@ class SpeakerEncoder:
             "loaded successfully."
         )
 
+    def encode_with_duration(
+        self,
+        audio_path: Union[str, Path],
+    ) -> Tuple[torch.Tensor, float]:
+        """
+        Convert an audio file into a speaker embedding and return its usable speech duration in seconds.
+        """
+        audio_path = Path(audio_path)
+
+        if not audio_path.exists():
+            raise FileNotFoundError(
+                f"Audio file not found: {audio_path}"
+            )
+
+        signal = self.preprocessor.process(
+            audio_path,
+            trim_silence=True,
+            normalize=False,
+        )
+
+        duration = float(
+            signal.shape[1] / self.preprocessor.TARGET_SAMPLE_RATE
+        )
+
+        signal = signal.to(self.device)
+
+        with torch.no_grad():
+            embedding = self.model.encode_batch(
+                signal
+            )
+
+        embedding = embedding.squeeze()
+
+        return embedding, duration
+
     def encode(
         self,
         audio_path: Union[str, Path],
@@ -84,41 +119,7 @@ class SpeakerEncoder:
                 1-dimensional speaker embedding.
         """
 
-        audio_path = Path(audio_path)
-
-        if not audio_path.exists():
-            raise FileNotFoundError(
-                f"Audio file not found: {audio_path}"
-            )
-
-        # Preprocess audio:
-        # - Convert to mono
-        # - Resample to 16 kHz
-        # - Convert to float32
-        # - Trim silence
-        # - Normalize amplitude
-        signal = self.preprocessor.process(
-            audio_path,
-            trim_silence=True,
-            normalize=False,
-        )
-
-        # Move processed audio to selected device
-        signal = signal.to(self.device)
-
-        # Generate speaker embedding
-        with torch.no_grad():
-            embedding = self.model.encode_batch(
-                signal
-            )
-
-        # Convert:
-        # [1, 1, embedding_dim]
-        #
-        # to:
-        # [embedding_dim]
-        embedding = embedding.squeeze()
-
+        embedding, _ = self.encode_with_duration(audio_path)
         return embedding
 
     def encode_and_normalize(

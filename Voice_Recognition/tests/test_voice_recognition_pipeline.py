@@ -105,12 +105,12 @@ def verify_audio_files():
             )
 
         print(
-            f"✓ Found: {audio_file}"
+            f"Found: {audio_file}"
         )
 
     print(
         "\n"
-        "✓ All audio files found"
+        "All audio files found"
     )
 
 
@@ -132,7 +132,7 @@ def clean_previous_profile():
 
         print(
             "\n"
-            "✓ Previous test profile deleted"
+            "Previous test profile deleted"
         )
 
 
@@ -188,7 +188,7 @@ def initialize_components():
 
     print(
         "\n"
-        "✓ All components initialized"
+        "All components initialized"
     )
 
     return (
@@ -305,7 +305,7 @@ def enroll_audio(
 
         print(
             "\n"
-            "✓ First reference embedding saved"
+            "First reference embedding saved"
         )
 
         return True
@@ -330,24 +330,6 @@ def enroll_audio(
         f"Existing references: "
         f"{current_count}"
     )
-
-    # =====================================================
-    # PROFILE FULL
-    # =====================================================
-
-    if profile_manager.is_enrollment_complete(
-
-        TEST_USER_ID
-
-    ):
-
-        print(
-            "\n"
-            "⚠ Profile already contains "
-            "5 references."
-        )
-
-        return False
 
     # =====================================================
     # VERIFY NEW RECORDING
@@ -415,7 +397,7 @@ def enroll_audio(
 
         print(
             "\n"
-            "✗ Enrollment rejected."
+            "Enrollment rejected."
         )
 
         print(
@@ -452,7 +434,7 @@ def enroll_audio(
 
     print(
         "\n"
-        f"✓ Reference "
+        f"Reference "
         f"{saved_reference_number} "
         f"saved successfully"
     )
@@ -541,7 +523,7 @@ def verify_final_profile(
     ):
 
         print(
-            f"✓ reference_{index}.pt "
+            f"reference_{index}.pt "
             f"shape: {embedding.shape}"
         )
 
@@ -551,7 +533,7 @@ def verify_final_profile(
 
     print(
         "\n"
-        "✓ All 5 reference embeddings "
+        "All 5 reference embeddings "
         "verified successfully"
     )
 

@@ -289,6 +289,8 @@ class VoiceProfileManager:
 
             "reference_embedding_count": 0,
 
+            "total_enrollment_records": 0,
+
             "maximum_reference_embeddings": (
                 self.MAX_REFERENCE_EMBEDDINGS
             ),
@@ -299,7 +301,9 @@ class VoiceProfileManager:
 
             "updated_at": current_time,
 
-            "status": "active"
+            "status": "active",
+
+            "enrollment_records": []
 
         }
 
@@ -349,6 +353,45 @@ class VoiceProfileManager:
 
 
     # =========================================================
+    # ACTIVE REFERENCE SELECTION ALGORITHM
+    # =========================================================
+
+    def get_active_reference_records(
+        self,
+        metadata_or_user_id: dict | str
+    ) -> List[dict]:
+        """
+        Select up to 5 enrollment records with the longest usable speech duration.
+        
+        Sorting Key:
+            1. Usable speech duration (descending)
+            2. Earlier enrollment order (ascending) as deterministic tie-breaker
+            
+        Legacy records with unknown duration (None) sort after positive durations,
+        preserving their original enrollment order as fallback.
+        """
+        if isinstance(metadata_or_user_id, str):
+            metadata = self.load_metadata(metadata_or_user_id)
+        else:
+            metadata = metadata_or_user_id
+
+        records = metadata.get("enrollment_records", [])
+        if not records:
+            return []
+
+        def sorting_key(record):
+            dur = record.get("usable_speech_duration")
+            # Primary: descending usable speech duration (-dur)
+            # Fallback for None duration: 1.0 (so legacy records sort after positive durations)
+            dur_val = -dur if dur is not None else 1.0
+            # Tie-breaker: earlier enrollment_order (ascending)
+            order_val = record.get("enrollment_order", 0)
+            return (dur_val, order_val)
+
+        sorted_records = sorted(records, key=sorting_key)
+        return sorted_records[:self.MAX_REFERENCE_EMBEDDINGS]
+
+    # =========================================================
     # GET NUMBER OF REFERENCES
     # =========================================================
 
@@ -356,18 +399,22 @@ class VoiceProfileManager:
         self,
         user_id: str
     ) -> int:
+        """
+        Return the count of active reference embeddings (min(5, total_valid_recordings)).
+        """
+        metadata = self.load_metadata(user_id)
+        active_records = self.get_active_reference_records(metadata)
+        return len(active_records)
 
-        metadata = (
-            self.load_metadata(
-                user_id
-            )
-        )
-
-        return int(
-            metadata[
-                "reference_embedding_count"
-            ]
-        )
+    def get_total_enrollment_count(
+        self,
+        user_id: str
+    ) -> int:
+        """
+        Return total number of valid enrollment recordings in speaker history.
+        """
+        metadata = self.load_metadata(user_id)
+        return len(metadata.get("enrollment_records", []))
 
     # =========================================================
     # CHECK ENROLLMENT STATUS
@@ -377,13 +424,10 @@ class VoiceProfileManager:
         self,
         user_id: str
     ) -> bool:
-
-        return (
-            self.get_reference_count(
-                user_id
-            )
-            >= self.MAX_REFERENCE_EMBEDDINGS
-        )
+        """
+        Returns True if profile contains at least MAX_REFERENCE_EMBEDDINGS (5) recordings.
+        """
+        return self.get_reference_count(user_id) >= self.MAX_REFERENCE_EMBEDDINGS
 
     # =========================================================
     # ADD REFERENCE EMBEDDING
@@ -392,120 +436,72 @@ class VoiceProfileManager:
     def add_reference_embedding(
         self,
         user_id: str,
-        embedding: torch.Tensor
+        embedding: torch.Tensor,
+        usable_speech_duration: Optional[float] = None,
+        audio_path: Optional[str | Path] = None,
+        recording_id: Optional[str] = None
     ) -> int:
         """
-        Add one reference embedding.
-
-        The embedding is saved in the next available slot.
-
-        Returns:
-            Reference number assigned to the embedding.
-
-        Example:
-
-            First embedding:
-                reference_1.pt
-
-            Second embedding:
-                reference_2.pt
-
-            ...
-
-            Fifth embedding:
-                reference_5.pt
+        Add a valid enrollment recording and embedding to speaker history.
+        
+        Recalculates active top-five reference recordings by usable speech duration.
         """
+        self._validate_user_id(user_id)
 
-        self._validate_user_id(
-            user_id
-        )
-
-        if not self.profile_exists(
-            user_id
-        ):
-
+        if not self.profile_exists(user_id):
             raise FileNotFoundError(
                 f"Profile does not exist: {user_id}"
             )
 
-        current_count = (
-            self.get_reference_count(
-                user_id
-            )
-        )
+        validated_embedding = self._validate_embedding(embedding)
+        metadata = self.load_metadata(user_id)
+        records = metadata.get("enrollment_records", [])
 
-        if current_count >= (
-            self.MAX_REFERENCE_EMBEDDINGS
-        ):
+        next_order = len(records) + 1
+        rec_id = recording_id or f"recording_{next_order:04d}"
+        embedding_filename = f"{rec_id}.pt"
 
-            raise RuntimeError(
-                "Voice profile already contains "
-                f"{self.MAX_REFERENCE_EMBEDDINGS} "
-                "reference embeddings."
-            )
+        embeddings_directory = self._get_embeddings_directory(user_id)
+        embeddings_directory.mkdir(parents=True, exist_ok=True)
+        embedding_path = embeddings_directory / embedding_filename
 
-        validated_embedding = (
-            self._validate_embedding(
-                embedding
-            )
-        )
+        torch.save(validated_embedding, embedding_path)
 
-        next_reference_number = (
-            current_count + 1
-        )
+        new_record = {
+            "recording_id": rec_id,
+            "audio_path": str(audio_path) if audio_path else None,
+            "usable_speech_duration": float(usable_speech_duration) if usable_speech_duration is not None else None,
+            "embedding_file": embedding_filename,
+            "enrollment_order": next_order,
+            "created_at": self._get_timestamp()
+        }
 
-        embedding_path = (
-            self._get_embedding_path(
-                user_id,
-                next_reference_number
-            )
-        )
+        records.append(new_record)
+        metadata["enrollment_records"] = records
+        metadata["total_enrollment_records"] = len(records)
 
-        torch.save(
-            validated_embedding,
-            embedding_path
-        )
+        active_records = self.get_active_reference_records(metadata)
+        metadata["reference_embedding_count"] = len(active_records)
+        metadata["enrollment_complete"] = (len(records) >= self.MAX_REFERENCE_EMBEDDINGS)
+        metadata["updated_at"] = self._get_timestamp()
 
-        metadata = (
-            self.load_metadata(
-                user_id
-            )
-        )
+        metadata_path = self._get_metadata_path(user_id)
+        with open(metadata_path, "w", encoding="utf-8") as file:
+            json.dump(metadata, file, indent=4)
 
-        metadata[
-            "reference_embedding_count"
-        ] = next_reference_number
+        # Concise enrollment log
+        active_durations = [
+            f"{r['usable_speech_duration']:.2f}" if r.get('usable_speech_duration') is not None else "N/A"
+            for r in active_records
+        ]
+        print(f"Speaker ID: {user_id}")
+        if usable_speech_duration is not None:
+            print(f"New usable speech duration: {usable_speech_duration:.2f} seconds")
+        print(f"Total valid enrollment recordings: {len(records)}")
+        print(f"Active reference recordings: {len(active_records)}")
+        print(f"Active reference durations: [{', '.join(active_durations)}]")
 
-        metadata[
-            "enrollment_complete"
-        ] = (
-            next_reference_number
-            >= self.MAX_REFERENCE_EMBEDDINGS
-        )
-
-        metadata[
-            "updated_at"
-        ] = self._get_timestamp()
-
-        metadata_path = (
-            self._get_metadata_path(
-                user_id
-            )
-        )
-
-        with open(
-            metadata_path,
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                metadata,
-                file,
-                indent=4
-            )
-
-        return next_reference_number
+        return next_order
 
     # =========================================================
     # SAVE AUDIO RECORDING TO PROFILE
@@ -606,9 +602,32 @@ class VoiceProfileManager:
             encoding="utf-8"
         ) as file:
 
-            return json.load(
+            metadata = json.load(
                 file
             )
+
+        # Backward compatibility / legacy profile migration
+        if "enrollment_records" not in metadata:
+            records = []
+            ref_count = metadata.get("reference_embedding_count", 0)
+            embeddings_dir = self._get_embeddings_directory(user_id)
+
+            for i in range(1, ref_count + 1):
+                emb_path = embeddings_dir / f"reference_{i}.pt"
+                if emb_path.exists():
+                    records.append({
+                        "recording_id": f"reference_{i}",
+                        "audio_path": None,
+                        "usable_speech_duration": None,
+                        "embedding_file": f"reference_{i}.pt",
+                        "enrollment_order": i,
+                        "created_at": metadata.get("created_at")
+                    })
+            metadata["enrollment_records"] = records
+            metadata["total_enrollment_records"] = len(records)
+            metadata["reference_embedding_count"] = min(self.MAX_REFERENCE_EMBEDDINGS, len(records))
+
+        return metadata
 
     # =========================================================
     # LOAD ONE EMBEDDING
@@ -624,38 +643,29 @@ class VoiceProfileManager:
             user_id
         )
 
-        if not (
-            1
-            <= reference_number
-            <= self.MAX_REFERENCE_EMBEDDINGS
-        ):
+        metadata = self.load_metadata(user_id)
+        active_records = self.get_active_reference_records(metadata)
 
-            raise ValueError(
-                "reference_number must be between "
-                "1 and 5."
+        if 1 <= reference_number <= len(active_records):
+            record = active_records[reference_number - 1]
+            embedding_path = self._get_embeddings_directory(user_id) / record["embedding_file"]
+            if embedding_path.exists():
+                embedding = torch.load(
+                    embedding_path,
+                    map_location="cpu"
+                )
+                return self._validate_embedding(embedding)
+
+        fallback_path = self._get_embedding_path(user_id, reference_number)
+        if fallback_path.exists():
+            embedding = torch.load(
+                fallback_path,
+                map_location="cpu"
             )
+            return self._validate_embedding(embedding)
 
-        embedding_path = (
-            self._get_embedding_path(
-                user_id,
-                reference_number
-            )
-        )
-
-        if not embedding_path.exists():
-
-            raise FileNotFoundError(
-                f"Reference embedding not found: "
-                f"{embedding_path}"
-            )
-
-        embedding = torch.load(
-            embedding_path,
-            map_location="cpu"
-        )
-
-        return self._validate_embedding(
-            embedding
+        raise FileNotFoundError(
+            f"Reference embedding not found: user={user_id}, ref={reference_number}"
         )
 
     # =========================================================
@@ -667,38 +677,27 @@ class VoiceProfileManager:
         user_id: str
     ) -> List[torch.Tensor]:
         """
-        Load only the embeddings that currently exist.
-
-        If a profile has 2 references:
-            returns 2 embeddings
-
-        If a profile has 5 references:
-            returns 5 embeddings
+        Load only the active top-five reference embeddings.
         """
 
-        count = (
-            self.get_reference_count(
-                user_id
-            )
-        )
+        metadata = self.load_metadata(user_id)
+        active_records = self.get_active_reference_records(metadata)
+        embeddings_dir = self._get_embeddings_directory(user_id)
 
         embeddings = []
 
-        for reference_number in range(
-            1,
-            count + 1
-        ):
-
-            embedding = (
-                self.load_embedding(
-                    user_id,
-                    reference_number
-                )
-            )
-
-            embeddings.append(
-                embedding
-            )
+        for record in active_records:
+            emb_file = record.get("embedding_file")
+            if emb_file:
+                emb_path = embeddings_dir / emb_file
+                if emb_path.exists():
+                    embedding = torch.load(
+                        emb_path,
+                        map_location="cpu"
+                    )
+                    embeddings.append(
+                        self._validate_embedding(embedding)
+                    )
 
         return embeddings
 

@@ -571,7 +571,7 @@ def run_pipeline() -> tuple[
 
         print(
 
-            f"\n✓ Incremental voice enrollment updated for {user_id} "
+            f"\n[OK] Incremental voice enrollment updated for {user_id} "
 
             f"(references: {ref_count}/5)"
 
@@ -582,7 +582,7 @@ def run_pipeline() -> tuple[
 
         print(
 
-            "\n✓ Audio saved to speaker dataset:"
+            "\n[OK] Audio saved to speaker dataset:"
 
         )
 
@@ -596,7 +596,7 @@ def run_pipeline() -> tuple[
 
         print(
 
-            "\n⚠ Speaker unknown."
+            "\nSpeaker unknown."
 
         )
 
