@@ -392,6 +392,107 @@ class VoiceProfileManager:
         return sorted_records[:self.MAX_REFERENCE_EMBEDDINGS]
 
     # =========================================================
+    # GET ACTIVE REFERENCE AUDIO PATHS
+    # =========================================================
+
+    def get_active_reference_audio_paths(
+        self,
+        user_id: str
+    ) -> List[Path]:
+        """
+        Retrieve the list of active Top-5 reference audio file paths for a user.
+
+        Reuses get_active_reference_records(...) as the single source of truth for Top-5 selection.
+        Prefers profile-managed audio files in data/voice_profiles/{user_id}/audio/.
+        Falls back to metadata audio_path if valid and present on disk.
+        Raises an exception if any active reference cannot be resolved to an existing audio file.
+        """
+        self._validate_user_id(user_id)
+
+        if not self.profile_exists(user_id):
+            raise FileNotFoundError(
+                f"Voice profile does not exist for user_id: '{user_id}'"
+            )
+
+        metadata = self.load_metadata(user_id)
+        active_records = self.get_active_reference_records(metadata)
+
+        if not active_records:
+            raise ValueError(
+                f"Voice profile for user '{user_id}' exists but has no active reference records."
+            )
+
+        audio_dir = self._get_audio_directory(user_id)
+
+        # Get all wav files in audio_dir sorted deterministically by name
+        audio_files = []
+        if audio_dir.exists() and audio_dir.is_dir():
+            audio_files = sorted(
+                [f for f in audio_dir.iterdir() if f.is_file() and f.suffix.lower() == ".wav"],
+                key=lambda f: f.name.lower()
+            )
+
+        resolved_paths: List[Path] = []
+        seen_paths = set()
+
+        for record in active_records:
+            rec_id = record.get("recording_id", "unknown")
+            meta_audio_path_str = record.get("audio_path")
+
+            resolved_path: Optional[Path] = None
+            attempted_profile_location: Optional[Path] = None
+
+            # 1. Prefer profile-managed audio copy based on save_audio_recording behavior (source_path.name)
+            if meta_audio_path_str:
+                source_name = Path(meta_audio_path_str).name
+                candidate_path = audio_dir / source_name
+                attempted_profile_location = candidate_path
+                if candidate_path.exists() and candidate_path.is_file():
+                    resolved_path = candidate_path
+
+            # 2. Check profile audio directory by recording_id filename
+            if resolved_path is None and rec_id:
+                candidate_by_id = audio_dir / f"{rec_id}.wav"
+                if attempted_profile_location is None:
+                    attempted_profile_location = candidate_by_id
+                if candidate_by_id.exists() and candidate_by_id.is_file():
+                    resolved_path = candidate_by_id
+
+            # 3. Check fallback in profile audio directory by enrollment_order index if legacy profile
+            if resolved_path is None and audio_files:
+                order = record.get("enrollment_order", 0)
+                if 1 <= order <= len(audio_files):
+                    candidate_by_order = audio_files[order - 1]
+                    if attempted_profile_location is None:
+                        attempted_profile_location = candidate_by_order
+                    if candidate_by_order.exists() and candidate_by_order.is_file():
+                        resolved_path = candidate_by_order
+
+            # 4. Fall back to metadata audio_path if it exists on disk
+            if resolved_path is None and meta_audio_path_str:
+                meta_path = Path(meta_audio_path_str)
+                if meta_path.exists() and meta_path.is_file():
+                    resolved_path = meta_path
+
+            # 5. If any active reference record cannot be resolved, raise clear exception
+            if resolved_path is None:
+                raise FileNotFoundError(
+                    f"Could not resolve audio file for active reference record.\n"
+                    f"User ID: {user_id}\n"
+                    f"Recording ID: {rec_id}\n"
+                    f"Attempted profile audio location: {attempted_profile_location}\n"
+                    f"Metadata audio_path: {meta_audio_path_str}"
+                )
+
+            resolved_abs = resolved_path.resolve()
+            if resolved_abs in seen_paths:
+                continue
+            seen_paths.add(resolved_abs)
+            resolved_paths.append(resolved_path)
+
+        return resolved_paths
+
+    # =========================================================
     # GET NUMBER OF REFERENCES
     # =========================================================
 
