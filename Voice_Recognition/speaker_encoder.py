@@ -16,6 +16,17 @@ from pathlib import Path
 from typing import Union, Tuple
 
 import torch
+try:
+    import speechbrain.utils.importutils as _sb_iu
+    _orig_lazy_getattr = _sb_iu.LazyModule.__getattr__
+    def _safe_lazy_getattr(self, attr):
+        try:
+            return _orig_lazy_getattr(self, attr)
+        except Exception as exc:
+            raise AttributeError(attr) from exc
+    _sb_iu.LazyModule.__getattr__ = _safe_lazy_getattr
+except Exception:
+    pass
 from speechbrain.inference.speaker import EncoderClassifier
 
 from .config import SPEAKER_MODEL_SOURCE, DEVICE

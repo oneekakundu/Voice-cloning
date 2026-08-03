@@ -7,12 +7,12 @@ from Voice_Cloning.config import (
     create_required_directories
 )
 
-from Voice_Cloning.reference_manager import (
-    ReferenceManager
-)
-
 from Voice_Cloning.xtts_zero_shot import (
     XTTSZeroShotCloner
+)
+
+from Voice_Cloning.reference_manager import (
+    ReferenceManager
 )
 
 from Voice_Cloning.utils import (

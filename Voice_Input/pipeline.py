@@ -83,6 +83,28 @@ from Voice_Input.speech_to_text import (
 
 
 # =========================================================
+# VOICE CLONING MODULE
+# =========================================================
+
+from Voice_Cloning.pipeline import (
+    VoiceCloningPipeline
+)
+
+
+PREDEFINED_VOICE_CLONING_TEXT = (
+    "Hello. This is a test of the CARE Doll personalized "
+    "voice cloning system."
+)
+
+
+# Initialize once.
+# XTTS itself remains lazily loaded inside the existing cloner.
+voice_cloning_pipeline = (
+    VoiceCloningPipeline()
+)
+
+
+# =========================================================
 # VOICE RECOGNITION MODULE
 # =========================================================
 
@@ -98,6 +120,7 @@ from Voice_Recognition.voice_enrollment import (
 voice_recognition = (
     VoiceRecognitionPipeline()
 )
+
 
 
 # =========================================================
@@ -655,6 +678,102 @@ def run_pipeline() -> tuple[
 
 
     # =====================================================
+    # STEP 5: VOICE CLONING (PERSONALIZED VOICE GENERATION)
+    # =====================================================
+
+    print(
+
+        "\n"
+        "========================================"
+
+    )
+
+    print(
+
+        "STEP 5: VOICE CLONING"
+
+    )
+
+    print(
+
+        "========================================"
+
+    )
+
+
+    generated_audio_path = None
+
+    if speaker_result.get("identified") and speaker_result.get("user_id"):
+
+        user_id = speaker_result.get("user_id")
+
+        print(
+
+            "\nStarting personalized voice generation..."
+
+        )
+
+        print(
+
+            f"Recognized user ID: {user_id}"
+
+        )
+
+        print(
+
+            "Predefined text: "
+            f"{PREDEFINED_VOICE_CLONING_TEXT}"
+
+        )
+
+        try:
+
+            generated_audio_path = (
+
+                voice_cloning_pipeline.generate_for_identified_user(
+
+                    user_id=user_id,
+
+                    text=PREDEFINED_VOICE_CLONING_TEXT,
+
+                    language="en",
+
+                )
+
+            )
+
+            print(
+
+                "Personalized voice generated successfully."
+
+            )
+
+            print(
+
+                f"Generated audio: {generated_audio_path}"
+
+            )
+
+        except Exception as error:
+
+            print(
+
+                f"Voice cloning failed for user "
+                f"'{user_id}': {error}"
+
+            )
+
+    else:
+
+        print(
+
+            "Voice cloning skipped because no user was "
+            "successfully identified."
+
+        )
+
+
+    # =====================================================
     # FINAL RESULT
     # =====================================================
 
@@ -760,6 +879,21 @@ def run_pipeline() -> tuple[
     )
 
 
+    if generated_audio_path:
+
+        print(
+
+            "\nGenerated personalized voice saved at:"
+
+        )
+
+        print(
+
+            generated_audio_path
+
+        )
+
+
     pipeline_result = {
 
         "status": "newly_enrolled" if speaker_result.get("newly_enrolled") else ("identified" if speaker_result.get("identified") else "unknown"),
@@ -779,7 +913,9 @@ def run_pipeline() -> tuple[
 
         "incremental_enrollment": incremental_enrollment,
 
-        "speaker_result": speaker_result
+        "speaker_result": speaker_result,
+
+        "generated_audio_path": generated_audio_path
 
     }
 
