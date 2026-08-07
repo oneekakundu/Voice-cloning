@@ -1,0 +1,54 @@
+{
+    "user_id": "user_003",
+    "profile_name": "user_003",
+    "embedding_dimension": 192,
+    "reference_embedding_count": 5,
+    "total_enrollment_records": 5,
+    "maximum_reference_embeddings": 5,
+    "enrollment_complete": true,
+    "created_at": "2026-08-04T07:37:02.389370+00:00",
+    "updated_at": "2026-08-06T10:51:20.632525+00:00",
+    "status": "active",
+    "enrollment_records": [
+        {
+            "recording_id": "recording_0001",
+            "audio_path": "D:\\Voice_cloning\\data\\audio\\recording_20260804_130701.wav",
+            "usable_speech_duration": 15.6468125,
+            "embedding_file": "recording_0001.pt",
+            "enrollment_order": 1,
+            "created_at": "2026-08-04T07:37:02.403294+00:00"
+        },
+        {
+            "recording_id": "recording_0002",
+            "audio_path": "D:\\Voice_cloning\\data\\audio\\recording_20260804_130801.wav",
+            "usable_speech_duration": 36.673625,
+            "embedding_file": "recording_0002.pt",
+            "enrollment_order": 2,
+            "created_at": "2026-08-04T07:38:02.021873+00:00"
+        },
+        {
+            "recording_id": "recording_0003",
+            "audio_path": "D:\\Voice_cloning\\data\\audio\\recording_20260804_131134.wav",
+            "usable_speech_duration": 37.2395625,
+            "embedding_file": "recording_0003.pt",
+            "enrollment_order": 3,
+            "created_at": "2026-08-04T07:41:34.767265+00:00"
+        },
+        {
+            "recording_id": "recording_0004",
+            "audio_path": "D:\\Voice_cloning\\data\\audio\\recording_20260804_132055.wav",
+            "usable_speech_duration": 73.6369375,
+            "embedding_file": "recording_0004.pt",
+            "enrollment_order": 4,
+            "created_at": "2026-08-04T07:50:56.197527+00:00"
+        },
+        {
+            "recording_id": "recording_0005",
+            "audio_path": "D:\\Voice_cloning\\data\\audio\\recording_20260806_162119.wav",
+            "usable_speech_duration": 43.499125,
+            "embedding_file": "recording_0005.pt",
+            "enrollment_order": 5,
+            "created_at": "2026-08-06T10:51:20.632525+00:00"
+        }
+    ]
+}

@@ -22,7 +22,7 @@ def test_voice_cloning_manager():
 
 
     test_text = (
-        "Hello. This is a test of the "
+        "This is a test of the "
         "user-based CARE Doll voice "
         "cloning system."
     )

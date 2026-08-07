@@ -92,8 +92,7 @@ from Voice_Cloning.pipeline import (
 
 
 PREDEFINED_VOICE_CLONING_TEXT = (
-    "Hello. This is a test of the CARE Doll personalized "
-    "voice cloning system."
+    "The giraffe is the tallest living terrestrial animal, its chief distinguishing characteristics  are it is extremely long neck and legs, it is horn like ossicones and it is distinctive  coat patterns.  The giraffe's scattered range extends from Chad in north to South Africa in the south and from Niger in the west to Somalia in the east, giraffes usually inhabit savannahs, grass  lands and open woodlands.  Their primary food, a source is Acacia leaves, which they browse at heights.  Most other herbivores cannot reach."
 )
 
 

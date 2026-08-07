@@ -46,7 +46,7 @@ def test_xtts_zero_shot():
 
 
     test_text = (
-        "Hello. This is a test of the "
+        "This is a test of the "
         "CARE Doll voice cloning module."
     )
 
