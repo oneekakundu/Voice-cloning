@@ -6,8 +6,8 @@
     "total_enrollment_records": 5,
     "maximum_reference_embeddings": 5,
     "enrollment_complete": true,
-    "created_at": "2026-08-03T03:38:56.845656+00:00",
-    "updated_at": "2026-08-03T03:38:57.073044+00:00",
+    "created_at": "2026-08-31T16:13:00.876809+00:00",
+    "updated_at": "2026-08-31T16:13:01.145675+00:00",
     "status": "active",
     "enrollment_records": [
         {
@@ -16,7 +16,7 @@
             "usable_speech_duration": null,
             "embedding_file": "recording_0001.pt",
             "enrollment_order": 1,
-            "created_at": "2026-08-03T03:38:56.862225+00:00"
+            "created_at": "2026-08-31T16:13:00.892836+00:00"
         },
         {
             "recording_id": "recording_0002",
@@ -24,7 +24,7 @@
             "usable_speech_duration": null,
             "embedding_file": "recording_0002.pt",
             "enrollment_order": 2,
-            "created_at": "2026-08-03T03:38:56.937958+00:00"
+            "created_at": "2026-08-31T16:13:00.996784+00:00"
         },
         {
             "recording_id": "recording_0003",
@@ -32,7 +32,7 @@
             "usable_speech_duration": null,
             "embedding_file": "recording_0003.pt",
             "enrollment_order": 3,
-            "created_at": "2026-08-03T03:38:56.981987+00:00"
+            "created_at": "2026-08-31T16:13:01.050127+00:00"
         },
         {
             "recording_id": "recording_0004",
@@ -40,7 +40,7 @@
             "usable_speech_duration": null,
             "embedding_file": "recording_0004.pt",
             "enrollment_order": 4,
-            "created_at": "2026-08-03T03:38:57.026630+00:00"
+            "created_at": "2026-08-31T16:13:01.096611+00:00"
         },
         {
             "recording_id": "recording_0005",
@@ -48,7 +48,7 @@
             "usable_speech_duration": null,
             "embedding_file": "recording_0005.pt",
             "enrollment_order": 5,
-            "created_at": "2026-08-03T03:38:57.073044+00:00"
+            "created_at": "2026-08-31T16:13:01.145675+00:00"
         }
     ]
 }

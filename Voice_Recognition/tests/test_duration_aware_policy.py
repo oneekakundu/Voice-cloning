@@ -30,10 +30,20 @@ TEST_PROFILES_DIR = "data/test_duration_policy_profiles"
 TEST_USER_ID = "duration_user_001"
 
 
+import gc
+import time
+
 def clean_test_dir():
+    gc.collect()
     p = Path(TEST_PROFILES_DIR)
     if p.exists():
-        shutil.rmtree(p)
+        for _ in range(5):
+            try:
+                shutil.rmtree(p)
+                break
+            except Exception:
+                time.sleep(0.1)
+                gc.collect()
 
 
 def create_mock_embedding(seed: int = 0) -> torch.Tensor:

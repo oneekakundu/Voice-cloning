@@ -19,6 +19,8 @@ Output:
 from pathlib import Path
 from typing import Tuple, Union
 
+import numpy as np
+import scipy.signal
 import soundfile as sf
 import torch
 import torchaudio
@@ -249,11 +251,38 @@ class SpeakerAudioPreprocessor:
                 f"seconds."
             )
 
+    def high_pass_filter(
+        self,
+        waveform: torch.Tensor,
+        cutoff_hz: float = 70.0,
+        order: int = 2,
+    ) -> torch.Tensor:
+        """
+        Apply a gentle 2nd-order Butterworth high-pass filter.
+        Removes sub-audible DC offset, handling noise, and microphone rumble
+        below human vocal fundamentals (F0) without altering speech characteristics.
+        """
+        audio_np = waveform.squeeze(0).cpu().numpy().astype(np.float32)
+        nyquist = 0.5 * self.TARGET_SAMPLE_RATE
+        normalized_cutoff = cutoff_hz / nyquist
+
+        sos = scipy.signal.butter(
+            order,
+            normalized_cutoff,
+            btype="highpass",
+            output="sos",
+        )
+        filtered = scipy.signal.sosfilt(sos, audio_np)
+
+        return torch.from_numpy(filtered).unsqueeze(0).float()
+
     def process(
         self,
         audio_path: Union[str, Path],
         trim_silence: bool = True,
         normalize: bool = False,
+        high_pass: bool = True,
+        cutoff_hz: float = 70.0,
     ) -> torch.Tensor:
         """
         Complete audio preprocessing pipeline.
@@ -268,6 +297,8 @@ class SpeakerAudioPreprocessor:
             Resample to 16 kHz
                 ↓
             Convert to float32
+                ↓
+            Gentle High-Pass Filter (70 Hz)
                 ↓
             Optional silence trimming
                 ↓
@@ -335,7 +366,17 @@ class SpeakerAudioPreprocessor:
         waveform = waveform.float()
 
         # --------------------------------------------------
-        # 5. Optional silence trimming
+        # 5. Gentle High-Pass Filtering (70 Hz)
+        # --------------------------------------------------
+
+        if high_pass:
+            waveform = self.high_pass_filter(
+                waveform,
+                cutoff_hz=cutoff_hz,
+            )
+
+        # --------------------------------------------------
+        # 6. Optional silence trimming
         # --------------------------------------------------
 
         if trim_silence:
@@ -344,7 +385,7 @@ class SpeakerAudioPreprocessor:
             )
 
         # --------------------------------------------------
-        # 6. Optional amplitude normalization
+        # 7. Optional amplitude normalization
         # --------------------------------------------------
 
         if normalize:
@@ -353,7 +394,7 @@ class SpeakerAudioPreprocessor:
             )
 
         # --------------------------------------------------
-        # 7. Validate final audio
+        # 8. Validate final audio
         # --------------------------------------------------
 
         self.validate_audio(waveform)
