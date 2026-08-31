@@ -1,0 +1,7 @@
+configuration,parameters,audio_files_tested,known_samples,unknown_samples,average_same_speaker_similarity,average_different_speaker_similarity,separation_margin,identification_accuracy,known_accuracy,known_correct,known_incorrect,known_rejected,unknown_correctly_rejected,unknown_incorrectly_accepted
+Baseline,Production settings,21,14,7,0.8191917073726654,0.4294180132535645,0.38977369411910096,80.95238095238095,100.0,14,0,0,3,4
+Conservative Trim,"Threshold=-35dB, Pad=250ms",21,14,7,0.8191917073726654,0.4294180132535645,0.38977369411910096,80.95238095238095,100.0,14,0,0,3,4
+High-Pass,"Butterworth order=2, Cutoff=70Hz",21,14,7,0.8194980704784394,0.42896197492742355,0.3905360955510158,80.95238095238095,100.0,14,0,0,3,4
+Band-Pass,"Butterworth order=2, 75Hz-7600Hz",21,14,7,0.8169877660274506,0.4291214049442269,0.3878663610832237,80.95238095238095,100.0,14,0,0,3,4
+Noise Reduction,"Spectral gating, Floor=-6dB",21,14,7,0.8062903368473053,0.4289509219766127,0.3773394148706926,76.19047619047619,92.85714285714286,13,0,1,3,4
+Best Combination,Conservative Trim + High-Pass (70Hz),21,14,7,0.8194980704784394,0.42896197492742355,0.3905360955510158,80.95238095238095,100.0,14,0,0,3,4
